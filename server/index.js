@@ -19,7 +19,7 @@ const ALLOWED_ORIGINS = ["http://localhost:5173", "http://127.0.0.1:5173"];
 app.use(
   cors({
     origin: ALLOWED_ORIGINS,
-    methods: ["GET", "POST", "PUT", "OPTIONS"],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
@@ -252,6 +252,16 @@ app.put("/api/my-car", verifyToken, async (req, res) => {
     { merge: true }
   );
   res.json({ ok: true });
+});
+
+// Eliminar mi carro existente
+app.delete("/api/my-car", verifyToken, async (req, res) => {
+  const uid = req.user.uid;
+  const ref = db.collection("cars").doc(uid);
+  const snap = await ref.get();
+  if (!snap.exists) return res.status(404).json({ error: "No car to delete" });
+  await ref.delete();
+  return res.status(204).send();
 });
 
 // ==============================

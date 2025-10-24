@@ -123,22 +123,35 @@ app.post("/api/register", verifyToken, async (req, res) => {
 app.post("/api/ensure-user", verifyToken, async (req, res) => {
   try {
     const uid = req.user.uid;
-    const urec = await admin.auth().getUser(uid);
+    let urec = null;
+    try {
+      urec = await admin.auth().getUser(uid);
+    } catch (inner) {
+      // Fallback temporal: usar claims del token cuando getUser falla
+      urec = {
+        email: req.user.email || null,
+        displayName: req.user.name || null,
+        photoURL: req.user.picture || null,
+        providerData: [],
+      };
+    }
+
     const docRef = db.collection("users").doc(uid);
     const snap = await docRef.get();
 
     const now = admin.firestore.FieldValue.serverTimestamp();
+    const displayName = urec.displayName || "";
     const base = {
       // No escribir user_id aquí para no sobreescribir el código institucional
       auth_uid: uid,
       email: urec.email || null,
       first_name:
-        req.body?.first_name ?? (urec.displayName?.split(" ")[0] || null),
+        req.body?.first_name ?? (displayName ? displayName.split(" ")[0] : null),
       last_name:
         req.body?.last_name ??
-        (urec.displayName?.split(" ").slice(1).join(" ") || null),
+        (displayName ? displayName.split(" ").slice(1).join(" ") || null : null),
       user_photo: req.body?.user_photo ?? (urec.photoURL || null),
-      providers: urec.providerData.map((p) => p.providerId),
+      providers: Array.isArray(urec.providerData) ? urec.providerData.map((p) => p.providerId) : [],
       updatedAt: now,
     };
 

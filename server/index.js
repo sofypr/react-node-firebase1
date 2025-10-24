@@ -27,6 +27,8 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
+// Parse JSON bodies
+app.use(express.json());
 
 
 // ==============================

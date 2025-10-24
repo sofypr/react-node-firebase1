@@ -139,6 +139,14 @@ const S = {
   },
   brand: { fontWeight: 800, fontSize: 18 },
   user: { display: "flex", alignItems: "center", gap: 10, color: "#fff" },
+  userImg: {
+    width: 28,
+    height: 28,
+    borderRadius: 999,
+    objectFit: "cover",
+    display: "block",
+    border: "1px solid rgba(255,255,255,.35)",
+  },
   userIcon: {
     width: 28, height: 28, borderRadius: 999, objectFit: "cover", display: "block",
     border:  "1px solid rgba(255,255,255,.35)",

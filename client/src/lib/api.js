@@ -39,7 +39,7 @@ export async function api(path, { method = "GET", body, headers = {} } = {}) {
     if (raw) {
       try {
         const err = JSON.parse(raw);
-        message = err.error || err.message || message;
+        message = (err.error || err.message || message) + (err.detail ? `: ${err.detail}` : "");
       } catch {
         message = raw;
       }

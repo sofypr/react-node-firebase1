@@ -19,6 +19,7 @@ const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 // Celular Colombia
 const CO_CELL_RE = /^(?:\+57\s*)?(3\d{2})[\s-]?(\d{3})[\s-]?(\d{4})$/;
 
+
 export default function CreateUser() {
   const navigate = useNavigate();
   const { state } = useLocation() || {};

@@ -16,14 +16,18 @@ const app = express();
 // CORS
 // ==============================
 const ALLOWED_ORIGINS = ["http://localhost:5173", "http://127.0.0.1:5173"];
-app.use(
-  cors({
-    origin: ALLOWED_ORIGINS,
-    methods: ["GET", "POST", "PUT", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
-app.use(express.json());
+
+const corsOptions = {
+  origin: ALLOWED_ORIGINS,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true,           // estaba mal escrito como "redentials"
+  preflightContinue: false,
+  optionsSuccessStatus: 204,
+};
+
+app.use(cors(corsOptions));
+
 
 // ==============================
 // Auth middleware
@@ -206,8 +210,13 @@ function pickCar(b) {
   if (b.brand) out.brand = String(b.brand).trim();
   if (b.model) out.model = String(b.model).trim();
   if (b.seats != null) out.seats = Number(b.seats);
+
+  // guarda color y emoji
+  if (b.color) out.color = String(b.color);
+  if (b.emoji) out.emoji = String(b.emoji);
+
   if (b.soat_url) out.soat_url = String(b.soat_url);
-  if (b.soat_expiry) out.soat_expiry = String(b.soat_expiry); // ISO YYYY-MM-DD
+  if (b.soat_expiry) out.soat_expiry = String(b.soat_expiry);
   return out;
 }
 
@@ -254,8 +263,22 @@ app.put("/api/my-car", verifyToken, async (req, res) => {
   res.json({ ok: true });
 });
 
+// Eliminar mi carro existente
+app.delete("/api/my-car", verifyToken, async (req, res) => {
+  const uid = req.user.uid;
+  const ref = db.collection("cars").doc(uid);
+  const snap = await ref.get();
+  if (!snap.exists) return res.status(404).json({ error: "No car to delete" });
+  await ref.delete();
+  return res.status(204).send();
+});
+
 // ==============================
 // Start
 // ==============================
 const port = process.env.PORT || 4000;
 app.listen(port, () => console.log(`API listening on :${port}`));
+
+
+
+

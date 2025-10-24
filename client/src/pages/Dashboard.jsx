@@ -53,7 +53,11 @@ export default function Dashboard() {
       <header style={S.header}>
         <div style={S.brand}>MoveTogether</div>
         <div style={S.user}>
-          <div style={S.userIcon}>👤</div>
+          {photo ? (
+            <img src={photo} alt="avatar" style={S.userImg} />
+          ) : (
+            <div style={S.userIcon}>👤</div>
+          )}
           <button
             style={S.userBtn}
             onClick={() => navigate("/user")}
@@ -62,6 +66,7 @@ export default function Dashboard() {
             {name}
           </button>
         </div>
+
       </header>
 
       {/* Body */}
@@ -135,8 +140,8 @@ const S = {
   brand: { fontWeight: 800, fontSize: 18 },
   user: { display: "flex", alignItems: "center", gap: 10, color: "#fff" },
   userIcon: {
-    width: 28, height: 28, borderRadius: 999, background: "rgba(255,255,255,.15)",
-    display: "grid", placeItems: "center", fontSize: 14,
+    width: 28, height: 28, borderRadius: 999, objectFit: "cover", display: "block",
+    border:  "1px solid rgba(255,255,255,.35)",
   },
   userBtn: {
     background: "transparent",

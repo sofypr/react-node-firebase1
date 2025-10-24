@@ -1,3 +1,5 @@
+import { storage } from "../lib/firebase";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { auth } from "../lib/firebase";
@@ -139,8 +141,8 @@ const S = {
   },
   avatarWrap: { display: "flex", alignItems: "center", gap: 14 },
   avatar: {
-    width: 72,
-    height: 72,
+    width: 100,
+    height: 100,
     borderRadius: "50%",
     objectFit: "cover",
     border: "2px solid #fff",
@@ -200,6 +202,11 @@ export default function User() {
   });
   const [hasPassword, setHasPassword] = useState(false);
   const [hasGoogle, setHasGoogle] = useState(false);
+    // 👇 estados para editar la foto en el perfil
+  const [photoPreview, setPhotoPreview] = useState(null);
+  const [photoFile, setPhotoFile] = useState(null);
+  const [upLoading, setUpLoading] = useState(false);
+
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 768px)");
@@ -207,6 +214,7 @@ export default function User() {
     mq.addEventListener("change", on);
     return () => mq.removeEventListener("change", on);
   }, []);
+
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
@@ -227,6 +235,11 @@ export default function User() {
     });
     return () => unsub();
   }, [navigate]);
+
+  useEffect(() => {
+    setPhotoPreview(me?.user_photo || null);
+  }, [me?.user_photo]);
+
 
   const fullName =
     `${me.first_name || ""} ${me.last_name || ""}`.trim() || "Usuario";
@@ -298,7 +311,43 @@ export default function User() {
 
     alert("Contraseña agregada correctamente. Ahora también puedes usar 'Recuperar contraseña'.");
   }
+  // 👇 seleccionar archivo y previsualizar
+function onPickFile(e) {
+  const f = e.target.files?.[0];
+  if (!f) return;
+  setPhotoFile(f);
+  setPhotoPreview(URL.createObjectURL(f));
+}
 
+// 👇 subir a Storage, obtener URL y guardar en tu API
+  async function savePhoto() {
+    if (!photoFile) {
+      alert("Primero selecciona una imagen.");
+      return;
+    }
+    try {
+      setUpLoading(true);
+      const uid = auth.currentUser?.uid;
+      if (!uid) throw new Error("Sesión inválida.");
+
+      const r = ref(storage, `users/${uid}/profile.jpg`);
+      await uploadBytes(r, photoFile);
+      const url = await getDownloadURL(r);
+
+      // Actualiza en tu backend
+      await api("/api/update-user", { method: "POST", body: { user_photo: url } });
+
+      // Refresca el estado local para que la UI cambie sin recargar
+      setMe((prev) => ({ ...prev, user_photo: url }));
+      setPhotoFile(null);
+      alert("Foto actualizada correctamente.");
+    } catch (e) {
+      console.error(e);
+      alert("No se pudo actualizar la foto.");
+    } finally {
+      setUpLoading(false);
+    }
+  }
 
 
   return (
@@ -357,15 +406,36 @@ export default function User() {
             <section style={S.cardWide}>
               <div style={S.headerRow}>
                 <div style={S.avatarWrap}>
-                  {me.user_photo ? (
-                    <img src={me.user_photo} alt="avatar" style={S.avatar} />
+                  {photoPreview ? (
+                    <img src={photoPreview} alt="avatar" style={S.avatar} />
                   ) : (
                     <div style={S.avatarFallback}>👤</div>
                   )}
-                  <button style={S.camBtn} onClick={() => dev("Cambiar foto")}>
+
+                  {/* Selector de archivo */}
+                  <label style={S.camBtn}>
                     📷
-                  </button>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={onPickFile}
+                      style={{ display: "none" }}
+                    />
+                  </label>
+
+                  {/* Botón Guardar aparece solo si hay un archivo nuevo */}
+                  {photoFile && (
+                    <button
+                      style={S.editBtn}
+                      onClick={savePhoto}
+                      disabled={upLoading}
+                      title="Guardar nueva foto de perfil"
+                    >
+                      {upLoading ? "Guardando…" : "Guardar"}
+                    </button>
+                  )}
                 </div>
+
                 <div style={{ display: "grid", gap: 4 }}>
                   <div style={S.nameText}>{fullName}</div>
                   <div style={S.muted}>{me.email || "—"}</div>
@@ -407,7 +477,7 @@ export default function User() {
                     )}
                   </div>
                 </section>
-                
+
             {/* DETAILS */}
             <section style={S.cardWide}>
               <div style={S.cardHeader}>

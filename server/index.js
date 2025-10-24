@@ -28,7 +28,7 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-
+app.use(express.json());
 // ==============================
 // Auth middleware
 // ==============================
@@ -204,21 +204,30 @@ app.get("/api/me", verifyToken, async (req, res) => {
 // ==============================
 // Cars (1 por usuario)
 // ==============================
-function pickCar(b) {
+function pickCar(b={}) {
+  const input = b || {};
   const out = {};
-  if (b.license_plate) out.license_plate = String(b.license_plate).trim().toUpperCase();
-  if (b.brand) out.brand = String(b.brand).trim();
-  if (b.model) out.model = String(b.model).trim();
-  if (b.seats != null) out.seats = Number(b.seats);
+  if (input.license_plate) out.license_plate = String(input.license_plate).trim().toUpperCase();
+  if (input.brand) out.brand = String(input.brand).trim();
+  if (input.model) out.model = String(input.model).trim();
+  if (input.seats != null) out.seats = Number(input.seats);
+  
+  // ✅ NUEVO: guardar color y emoji
+  if (input.color) out.color = String(input.color);
+  if (input.emoji) out.emoji = String(input.emoji);
 
-  // guarda color y emoji
-  if (b.color) out.color = String(b.color);
-  if (b.emoji) out.emoji = String(b.emoji);
-
-  if (b.soat_url) out.soat_url = String(b.soat_url);
-  if (b.soat_expiry) out.soat_expiry = String(b.soat_expiry);
+  if (input.soat_url) out.soat_url = String(b.soat_url);
+  if (input.soat_expiry) out.soat_expiry = String(b.soat_expiry);
   return out;
 }
+
+// Verificar si ya tiene carro
+app.get("/api/has-car", verifyToken, async (req, res) => {
+  const uid = req.user.uid;
+  const snap = await db.collection("cars").doc(uid).get();
+  res.json({ hasCar: snap.exists });
+});
+
 
 // Verificar si ya tiene carro
 app.get("/api/has-car", verifyToken, async (req, res) => {
@@ -236,19 +245,38 @@ app.get("/api/my-car", verifyToken, async (req, res) => {
 
 // Crear mi carro (solo si no existe)
 app.post("/api/my-car", verifyToken, async (req, res) => {
+  try {
   const uid = req.user.uid;
   const ref = db.collection("cars").doc(uid);
   if ((await ref.get()).exists) {
     return res.status(409).json({ error: "You already have too many cars" });
   }
+
   const body = pickCar(req.body);
+
+  // Validaciones mínimas
+  if (!body.license_plate)
+    return res.status(400).json({ error: "license_plate is required" });
+  if (!body.brand)
+    return res.status(400).json({ error: "brand is required" });
+  if (!body.model)
+    return res.status(400).json({ error: "model is required" });
+  if (body.seats == null || Number.isNaN(Number(body.seats)))
+    return res.status(400).json({ error: "seats must be a number" });
+
   await ref.set({
     owner_uid: uid,
     ...body,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   });
+
   res.status(201).json({ ok: true });
+} catch (e) {
+  res.status(500).json({ error: "my-car create failed", detail: String(e) });
+}
+
+
 });
 
 // Actualizar mi carro existente

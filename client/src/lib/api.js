@@ -25,21 +25,30 @@ export async function api(path, { method = "GET", body, headers = {} } = {}) {
     body: body ? JSON.stringify(body) : undefined,
   });
 
-  // 3. Manejar errores HTTP
-  if (!res.ok) {
-    let message;
-    try {
-      const err = await res.json();
-      message = err.error || err.message || JSON.stringify(err);
-    } catch {
-      message = await res.text();
-    }
-    throw new Error(message || `Error ${res.status}`);
+    // 3. Leer el cuerpo UNA sola vez para evitar "body stream already read"
+  let raw = "";
+  try {
+    raw = await res.text();
+  } catch {
+    raw = "";
   }
+  if (!res.ok) {
+      let message = `Error ${res.status}`;
+      if (raw) {
+        try {
+          const err = JSON.parse(raw);
+          message = err.error || err.message || message;
+        } catch {
+          message = raw;
+        }
+      }
+      throw new Error(message);
+   }
 
   // 4. Retornar JSON o vacío si no hay contenido
+  if (!raw) return {};
   try {
-    return await res.json();
+    return JSON.parse(raw);
   } catch {
     return {};
   }

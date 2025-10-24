@@ -206,6 +206,8 @@ function pickCar(b) {
   if (b.brand) out.brand = String(b.brand).trim();
   if (b.model) out.model = String(b.model).trim();
   if (b.seats != null) out.seats = Number(b.seats);
+  if (b.color) out.color = String(b.color);
+  if (b.emoji) out.emoji = String(b.emoji);
   if (b.soat_url) out.soat_url = String(b.soat_url);
   if (b.soat_expiry) out.soat_expiry = String(b.soat_expiry); // ISO YYYY-MM-DD
   return out;
